@@ -4,7 +4,7 @@
 
 TaskFlow is a modern and responsive task management application developed as part of a **Frontend Development Internship Task** using Next.js App Router, React, TypeScript, Tailwind CSS, Prisma, SQLite, and Zod.
 
-The application provides a clean workspace for creating, viewing, searching, filtering, updating, and deleting tasks while demonstrating practical CRUD functionality, reusable components, API integration, form validation, database persistence, dynamic routing, and responsive UI development.
+The application provides a clean workspace for creating, viewing, searching, updating, and deleting tasks while demonstrating practical CRUD functionality, reusable components, API integration, form validation, database persistence, dynamic routing, and responsive UI development.
 
 ---
 
@@ -26,8 +26,6 @@ The application provides a clean workspace for creating, viewing, searching, fil
 ### 🔎 Search & Organization
 
 - 🔍 Search tasks by title.
-- 🏷️ Filter tasks by available criteria.
-- 📄 Paginate task results.
 - 🎯 Organize tasks by status and priority.
 - ⭐ Identify important tasks using favorites.
 - 📈 View task progress through dashboard statistics.
@@ -86,72 +84,87 @@ TaskFlow follows a **layered application architecture** that separates the user 
 
 ### Architecture Overview
 
+The application uses two data-access paths:
+
+1. Client-side task operations communicate through the API client and API routes.
+2. Server-rendered task detail and edit pages access the centralized service layer directly.
+
 ```text
-┌─────────────────────────────────┐
-│          User Interface         │
-│         Next.js + React         │
-└────────────────┬────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────┐
-│            API Client           │
-│         lib/api/tasks.ts        │
-└────────────────┬────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────┐
-│           API Routes            │
-│       GET / POST / PATCH        │
-│             DELETE              │
-└────────────────┬────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────┐
-│         Zod Validation          │
-│       Request Validation        │
-└────────────────┬────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────┐
-│          Service Layer          │
-│     lib/services/task.service   │
-└────────────────┬────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────┐
-│            Prisma ORM           │
-│       Database Operations       │
-└────────────────┬────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────┐
-│          SQLite Database        │
-│         Persistent Storage      │
-└─────────────────────────────────┘
+                 TASKFLOW APPLICATION
+                          |
+             +------------+------------+
+             |                         |
+        CLIENT-SIDE                SERVER-SIDE
+             |                         |
+         UI Components           Detail / Edit Pages
+             |                         |
+         API Client               Service Layer
+             |                         |
+         API Routes               Prisma ORM
+             |                         |
+      Zod Validation                    |
+             |                         |
+        Service Layer                   |
+             |                         |
+         Prisma ORM                     |
+             |                         |
+             +------------+------------+
+                          |
+                     SQLite DB
 ```
 
-### 🔄 Core Data Flow
+### 🔄 Client-Side Data Flow
 
 ```text
 User Interaction
-       ↓
+       |
+       v
 React UI Component
-       ↓
+       |
+       v
 API Client
-       ↓
+       |
+       v
 Next.js API Route
-       ↓
+       |
+       v
 Zod Request Validation
-       ↓
+       |
+       v
 Task Service Layer
-       ↓
+       |
+       v
 Prisma ORM
-       ↓
+       |
+       v
 SQLite Database
-       ↓
+       |
+       v
 Structured API Response
-       ↓
+       |
+       v
 Updated User Interface
+```
+
+### 🔄 Server-Side Data Flow
+
+```text
+Task Detail / Edit Page
+          |
+          v
+     Task Service Layer
+          |
+          v
+       Prisma ORM
+          |
+          v
+     SQLite Database
+          |
+          v
+       Task Data
+          |
+          v
+    Server-Rendered UI
 ```
 
 ### 🧩 Architecture Responsibilities
@@ -166,7 +179,7 @@ Updated User Interface
 | Prisma | Database queries and persistence |
 | SQLite | Persistent task storage |
 
-The task list uses client-side API fetching, while task detail and edit pages can retrieve their data through the server-side service layer.
+The task list uses client-side API fetching, while task detail and edit pages retrieve their data through the server-side service layer.
 
 This separation keeps UI components independent of direct database operations and makes the application easier to maintain.
 
@@ -235,7 +248,6 @@ TaskFlow/
 ├── 📄 .gitignore
 ├── 📄 eslint.config.mjs
 ├── 📄 next.config.ts
-├── 📄 next-env.d.ts
 ├── 📄 package.json
 ├── 📄 package-lock.json
 ├── 📄 postcss.config.mjs
@@ -256,7 +268,7 @@ TaskFlow/
 | `/tasks/new` | ➕ Create a new task |
 | `/tasks/[id]` | 👁️ View task details |
 | `/tasks/[id]/edit` | ✏️ Edit an existing task |
-| Invalid route | 🚫 Custom not-found experience |
+| Invalid task ID | 🚫 Not-found experience |
 
 ---
 
@@ -291,18 +303,23 @@ TaskFlow uses shared Zod schemas to validate task information before database op
 
 ```text
 Incoming Request
-       ↓
+       |
+       v
 Request Body
-       ↓
+       |
+       v
 Zod Schema Validation
-       ↓
+       |
+       v
    Valid Input?
     /       \
   Yes        No
-   ↓          ↓
-Service     Validation
-Layer       Error Response
-   ↓
+   |          |
+   v          v
+Service    Validation
+Layer      Error Response
+   |
+   v
 Prisma ORM
 ```
 
@@ -356,13 +373,14 @@ updatedAt
 
 ### 🗄️ Database Features
 
-- Unique task identifiers.
+- Unique task identifiers generated using `cuid()`.
 - Default task status: `TODO`.
 - Default task priority: `MEDIUM`.
 - Optional due dates.
+- Default favorite state: `false`.
 - Automatic creation timestamps.
 - Automatic update timestamps.
-- Database indexes for frequently queried fields.
+- Database indexes for commonly queried fields.
 - Persistent SQLite storage.
 
 ### 📊 Task Statuses
@@ -380,6 +398,19 @@ updatedAt
 | 🟢 `LOW` | Lower-priority task |
 | 🟡 `MEDIUM` | Standard-priority task |
 | 🔴 `HIGH` | Higher-priority task |
+
+### 📇 Database Indexes
+
+The Prisma schema defines the following indexes:
+
+- `status`
+- `priority`
+- `dueDate`
+- `isFavorite`
+- `createdAt`
+- Composite index on `status` and `priority`
+
+These indexes are configured to support database queries involving commonly used task fields.
 
 ---
 
@@ -402,7 +433,7 @@ git clone https://github.com/raviyadav004/VhBuyio-Frontend-Internship-Task-6---T
 ### 2. Navigate to the Project
 
 ```bash
-cd VhBuyio-Frontend-Task-6---TaskFlow
+cd VhBuyio-Frontend-Internship-Task-6---TaskFlow
 ```
 
 ### 3. Install Dependencies
@@ -415,7 +446,7 @@ npm install
 
 Create a local `.env` file using `.env.example` as the reference.
 
-Configure the SQLite database connection according to the project's Prisma configuration.
+Configure the SQLite database connection using the `DATABASE_URL` variable required by the Prisma schema.
 
 Never commit private environment variables or credentials.
 
@@ -479,7 +510,7 @@ npx prisma generate
 npm run build
 ```
 
-A successful production build verifies the configured compilation, linting, type-checking, page generation, and build optimization stages.
+A successful production build verifies the configured application compilation, linting, type-checking, page generation, and build optimization stages.
 
 ### Current Local Verification Record
 
@@ -493,7 +524,7 @@ The latest recorded local verification confirms:
 | Production build | ✅ Passed |
 | Next.js route generation | ✅ Passed |
 
-These results describe the recorded local verification run, not a guarantee about future code changes.
+> These results describe the recorded local verification run. Run the checks again after making further code changes.
 
 ---
 
@@ -520,9 +551,9 @@ Create a task using:
 - Due date
 - Favorite state
 
-### 🔎 4. Search and Filter
+### 🔎 4. Search Tasks
 
-Demonstrate task search, filtering, and pagination.
+Search for a task using its title.
 
 ### 👁️ 5. View Details
 
@@ -591,13 +622,13 @@ Responsive behavior is applied across navigation, forms, task cards, buttons, an
 The interface follows accessibility-conscious development practices, including:
 
 - Semantic HTML structure.
-- Accessible navigation labels.
+- Descriptive navigation labels.
 - Keyboard-focus styles.
 - Appropriate button and link semantics.
-- `aria-current` for active navigation.
-- `aria-invalid` and `aria-describedby` for form validation.
+- Clear form labels.
+- Accessible validation feedback.
 - Clear interactive states.
-- Logical visual hierarchy.
+- Readable interface content.
 - Responsive interaction patterns.
 
 ---
@@ -617,7 +648,7 @@ The interface follows accessibility-conscious development practices, including:
 | 💾 Database | SQLite |
 | 🛡️ Validation | Zod |
 | 🔎 Search | Task title search |
-| 🏷️ Organization | Filtering and pagination |
+| 🎯 Organization | Task status and priority |
 | ⭐ Favorites | Favorite task management |
 | 📅 Scheduling | Optional due dates |
 | 🌙 Theme | Light / Dark |
@@ -669,6 +700,7 @@ Potential future enhancements include:
 - 📎 File attachments.
 - 🔗 Task dependencies.
 - 🗂️ Custom workspaces and projects.
+- 📄 Advanced task filtering and pagination.
 
 > These are potential future enhancements and are not represented as implemented features.
 
@@ -700,12 +732,17 @@ Typical ignored entries include:
 
 ```gitignore
 node_modules/
+
 .next/
+
 out/
+
 *.tsbuildinfo
+
 .env
 .env.local
 .env.*.local
+
 !.env.example
 ```
 

@@ -2,8 +2,9 @@ import Link from "next/link";
 import type { Route } from "next";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CalendarDays, CheckCircle2, Clock3, Flag, Pencil, Star, } from "lucide-react";
-import { getTaskById } from "@/lib/services/task.service";
 import { StatusBadge } from "@/components/StatusBadge";
+import { getTaskById, TaskNotFoundError, } from "@/lib/services/task.service";
+import type { TaskPriority } from "@/lib/validations";
 
 type TaskDetailsPageProps = {
   params: Promise<{ id: string }>;
@@ -37,7 +38,7 @@ function formatDueDate(date: string | null): string {
   }).format(new Date(date));
 }
 
-function getPriorityStyles(priority: string): {
+function getPriorityStyles(priority: TaskPriority): {
   label: string;
   className: string;
 } {
@@ -55,7 +56,6 @@ function getPriorityStyles(priority: string): {
       };
 
     case "MEDIUM":
-    default:
       return {
         label: "Medium",
         className: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400",
@@ -63,11 +63,19 @@ function getPriorityStyles(priority: string): {
   }
 }
 
-export default async function TaskDetailsPage({ params, }: TaskDetailsPageProps) {
+export default async function TaskDetailsPage({
+  params,
+}: TaskDetailsPageProps) {
   const { id } = await params;
-  const task = await getTaskById(id);
-  if (!task) {
-    notFound();
+
+  let task;
+  try {
+    task = await getTaskById(id);
+  } catch (error: unknown) {
+    if (error instanceof TaskNotFoundError) {
+      notFound();
+    }
+    throw error;
   }
 
   const isUpdated = new Date(task.updatedAt).getTime() !== new Date(task.createdAt).getTime();
@@ -95,7 +103,6 @@ export default async function TaskDetailsPage({ params, }: TaskDetailsPageProps)
                 <h1 id="task-title" className="max-w-3xl break-words text-4xl font-black tracking-tight text-slate-950 dark:text-white sm:text-5xl" > {task.title} </h1>
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-500 dark:text-slate-400"> Review the task details, track its current status, and update the task whenever your workflow changes. </p>
               </div>
-
               <Link href={editHref} className="focus-ring inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-slate-950/15 transition hover:-translate-y-0.5 hover:bg-indigo-600 dark:bg-white dark:text-slate-950 dark:hover:bg-indigo-400 dark:hover:text-white" > <Pencil size={16} aria-hidden="true" /> Edit task </Link>
             </div>
           </header>
@@ -190,6 +197,7 @@ export default async function TaskDetailsPage({ params, }: TaskDetailsPageProps)
                     </>
                   )}
                 </div>
+
                 <p className="mt-2 text-xs leading-5 text-amber-700/70 dark:text-amber-300/70"> {task.isFavorite ? "This task is marked for quick access." : "You can mark this task as a favorite while editing."} </p>
               </div>
             </aside>

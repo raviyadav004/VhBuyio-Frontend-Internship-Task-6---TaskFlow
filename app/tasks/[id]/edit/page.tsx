@@ -2,9 +2,9 @@ import Link from "next/link";
 import type { Route } from "next";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CalendarDays, Flag, Pencil, Sparkles, Star, } from "lucide-react";
-import { getTaskById } from "@/lib/services/task.service";
-import { TaskForm } from "@/components/TaskForm";
 import { StatusBadge } from "@/components/StatusBadge";
+import { TaskForm } from "@/components/TaskForm";
+import { getTaskById, TaskNotFoundError, } from "@/lib/services/task.service";
 import type { TaskView } from "@/types/task";
 
 type EditTaskPageProps = {
@@ -41,9 +41,14 @@ export default async function EditTaskPage({
   params,
 }: EditTaskPageProps) {
   const { id } = await params;
-  const taskDTO = await getTaskById(id);
-  if (!taskDTO) {
-    notFound();
+  let taskDTO;
+  try {
+    taskDTO = await getTaskById(id);
+  } catch (error: unknown) {
+    if (error instanceof TaskNotFoundError) {
+      notFound();
+    }
+    throw error;
   }
 
   const task: TaskView = {
@@ -57,7 +62,6 @@ export default async function EditTaskPage({
   const priorityLabel = getPriorityLabel(task.priority);
   const statusLabel = getStatusLabel(task.status);
   const detailsHref = `/tasks/${encodeURIComponent(task.id)}` as Route;
-
   return (
     <section className="container-shell page-enter py-8 sm:py-12 lg:py-14">
       <div className="mx-auto max-w-5xl">
@@ -72,13 +76,14 @@ export default async function EditTaskPage({
                 <span className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-white/80 px-3 py-1.5 text-xs font-bold text-indigo-700 backdrop-blur dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-300"> <Pencil size={13} aria-hidden="true" /> Update task </span>
                 <StatusBadge status={task.status} />
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-bold text-slate-500 backdrop-blur dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300"> <Sparkles size={13} aria-hidden="true" /> TaskFlow </span>
-                {task.isFavorite && ( <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50/90 px-3 py-1.5 text-xs font-bold text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300"> <Star size={13} fill="currentColor" aria-hidden="true" /> Favorite </span>
+
+                {task.isFavorite && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50/90 px-3 py-1.5 text-xs font-bold text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300"> <Star size={13} fill="currentColor" aria-hidden="true" /> Favorite </span>
                 )}
               </div>
 
               <h1 id="edit-task-title" className="mt-5 max-w-3xl break-words text-4xl font-black tracking-tight text-slate-950 dark:text-white sm:text-5xl" > Edit task </h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-500 dark:text-slate-400"> Update the information below to keep this task accurate, organized, and aligned with your current workflow. </p>
-
               <div className="mt-6 overflow-hidden rounded-2xl border border-white/80 bg-white/70 shadow-sm backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/60">
                 <div className="grid sm:grid-cols-2 lg:grid-cols-4">
                   <div className="min-w-0 border-b border-slate-100 px-4 py-4 sm:border-r lg:border-b-0 dark:border-slate-800">
@@ -108,10 +113,7 @@ export default async function EditTaskPage({
             </div>
           </header>
 
-          <div className="bg-slate-50/60 p-5 dark:bg-slate-950/50 sm:p-8 lg:p-10">
-            <TaskForm task={task} />
-          </div>
-
+          <div className="bg-slate-50/60 p-5 dark:bg-slate-950/50 sm:p-8 lg:p-10"> <TaskForm task={task} /> </div>
           <footer className="border-t border-slate-100 bg-slate-50/70 px-6 py-5 dark:border-slate-800 dark:bg-slate-900/50 sm:px-10">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
